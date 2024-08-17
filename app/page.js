@@ -65,7 +65,7 @@ export default function Home() {
       </Box>
       
       <Box sx={{my:6}}>
-        <Typography variant="h4" gutterBottom>
+        <Typography variant="h4" gutterBottom sx={{textAlign:'center'} }>
           Features
         </Typography>
         <Grid container spacing={4}>
@@ -73,7 +73,7 @@ export default function Home() {
             <Typography variant="h6" gutterBottom>Easy Text Input</Typography>
             <Typography>
               {' '}
-              Simply input your text and let our software do the rest. Creating flashcards has never been easier.
+              Simply input your text or upload a file and let our software do the rest. Creating flashcards has never been easier.
             </Typography>
           </Grid>
           <Grid item xs={12} md={4}>

@@ -1,5 +1,5 @@
-import { db } from "../firebase/firebase";
-import { doc, writeBatch, getDoc, collection, getDocs, deleteDoc } from "firebase/firestore";
+import { db } from "@/firebase/firebase";
+import { doc, writeBatch, getDoc, collection, getDocs, deleteDoc, setDoc } from "firebase/firestore";
 
 // Function to save user data on signup
 export const saveUserData = async (user) => {
@@ -19,27 +19,37 @@ export const saveUserData = async (user) => {
 export const saveFlashcardsCollection = async (userId, collectionName, flashcards) => {
   const batch = writeBatch(db);
   const userDocRef = doc(db, "users", userId);
-  const docSnap = await getDoc(userDocRef);
 
   try {
-    if (docSnap.exists()) {
-      const collections = docSnap.data().flashcards || [];
-      if (collections.find((f) => f.name === collectionName)) {
-        throw new Error("Flashcard collection with the same name already exists.");
-      } else {
-        collections.push({ name: collectionName });
-        batch.set(userDocRef, { flashcards: collections }, { merge: true });
-      }
-    } else {
-      batch.set(userDocRef, { flashcards: [{ name: collectionName }] });
+    if (!userId || !collectionName || !flashcards) {
+      throw new Error("Invalid input data.");
     }
 
+    const docSnap = await getDoc(userDocRef);
+
+    let collections = [];
+    if (docSnap.exists()) {
+      collections = docSnap.data().flashcards || [];
+      if (collections.find((f) => f.name === collectionName)) {
+        throw new Error("Flashcard collection with the same name already exists.");
+      }
+    }
+
+    // Add the new collection to the array
+    collections.push({ name: collectionName });
+    batch.set(userDocRef, { flashcards: collections }, { merge: true });
+
+    // Create a reference for the new flashcards collection
     const colRef = collection(userDocRef, collectionName);
-    flashcards.forEach((flashcard) => {
-      const cardDocRef = doc(colRef);
+    flashcards.forEach((flashcard, index) => {
+      if (!flashcard.front || !flashcard.back) {
+        throw new Error(`Invalid flashcard at index ${index}`);
+      }
+      const cardDocRef = doc(colRef);  // Automatically generates a unique ID
       batch.set(cardDocRef, flashcard);
     });
 
+    // Commit the batch operation
     await batch.commit();
   } catch (error) {
     console.error("Error saving flashcards collection:", error);

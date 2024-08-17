@@ -6,17 +6,23 @@ import { useRouter } from "next/navigation";
 import { saveFlashcardsCollection, getFlashcardsCollections } from "@/firebase/operations";
 import { Box, Button, Card, CardActionArea, CardContent, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Paper, TextField, Typography } from "@mui/material";
 import { doc, collection, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/firebase/firebase"; // Ensure db is properly imported
+import { db } from "@/firebase/firebase";
+import * as pdfjsLib from 'pdfjs-dist/webpack';
+import { PacmanLoader } from 'react-spinners';
+
 
 export default function Generate() {
     const { isLoaded, isSignedIn, user } = useUser();
     const [flashcards, setFlashCards] = useState([]);
     const [flipped, setFlipped] = useState([]);
     const [text, setText] = useState('');
-    const [collectionName, setCollectionName] = useState(''); // Use this for the collection's name
+    const [collectionName, setCollectionName] = useState('');
     const [open, setOpen] = useState(false);
     const [recentCollections, setRecentCollections] = useState([]);
+    const [file, setFile] = useState(null);
     const router = useRouter();
+    const [loading, setLoading] = useState(false);
+
 
     // Fetch user's flashcards from Firestore
     useEffect(() => {
@@ -29,7 +35,6 @@ export default function Generate() {
 
                 if (docSnap.exists()) {
                     const collections = docSnap.data().flashcards || [];
-                    // setFlashCards(collections);
                 } else {
                     await setDoc(docRef, { flashcards: [] });
                 }
@@ -46,8 +51,7 @@ export default function Generate() {
         const fetchCollections = async () => {
             try {
                 const userCollections = await getFlashcardsCollections(user.id);
-                console.log('Fetched Collections:', userCollections); // Debugging: Log the collections
-                setRecentCollections(userCollections.slice(0, 5)); // Get the 5 most recent collections
+                setRecentCollections(userCollections.slice(0, 5));
             } catch (error) {
                 console.error('Error fetching collections:', error);
             }
@@ -58,29 +62,35 @@ export default function Generate() {
         }
     }, [user]);
 
+    
     const handleSubmit = async () => {
         if (!text.trim()) {
             alert('Please enter some text to generate flashcards.');
             return;
         }
-
+    
+        setLoading(true); // Start loading
+    
         try {
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 body: text,
             });
-
+    
             if (!response.ok) {
                 throw new Error('Failed to generate flashcards');
             }
-
+    
             const data = await response.json();
             setFlashCards(data);
         } catch (error) {
             console.error('Error generating flashcards:', error);
             alert('An error occurred while generating flashcards. Please try again.');
+        } finally {
+            setLoading(false); // Stop loading
         }
     };
+    
 
     const handleCardClick = (id) => {
         setFlipped((prev) => ({
@@ -117,6 +127,37 @@ export default function Generate() {
         }
     };
 
+    const handleFileUpload = async (event) => {
+        const uploadedFile = event.target.files[0];
+        setFile(uploadedFile);
+
+        try {
+            const fileReader = new FileReader();
+
+            fileReader.onload = async function () {
+                const typedArray = new Uint8Array(this.result);
+                const pdf = await pdfjsLib.getDocument(typedArray).promise;
+
+                let extractedText = '';
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    textContent.items.forEach(item => {
+                        extractedText += item.str + ' ';
+                    });
+                }
+
+                setText(extractedText);
+                alert("Text extracted from document. You can now generate flashcards.");
+            };
+
+            fileReader.readAsArrayBuffer(uploadedFile);
+        } catch (error) {
+            console.error("Error extracting text from file:", error);
+            alert("Failed to extract text from the document. Please try another file.");
+        }
+    };
+
     return (
         <Container maxWidth="lg">
             <Box sx={{ mt: 4, mb: 6, display: "flex", flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -135,9 +176,21 @@ export default function Generate() {
                             variant="outlined"
                             sx={{ mb: 2 }}
                         />
+                        <input
+                            type="file"
+                            accept=".pdf"
+                            onChange={handleFileUpload}
+                            style={{ marginBottom: '1rem' }}
+                        />
                         <Button variant="contained" color="primary" onClick={handleSubmit} fullWidth>
                             Submit
                         </Button>
+                        
+                        {loading && (
+                            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
+                                <PacmanLoader color="#0699ff" />
+                            </div>
+                        )}
                     </Paper>
 
                     {flashcards.length > 0 && (
@@ -216,10 +269,7 @@ export default function Generate() {
                                     sx={{ mb: 2, width: '100%', padding: '12px 24px', fontSize: '1rem', minWidth: '150px' }}
                                     variant="contained"
                                     fullWidth
-                                    onClick={() => {
-                                        console.log('Navigating to collection:', collection.id); // Debugging: Log the collection ID
-                                        router.push(`/flashcards?collection=${collection.name}`);
-                                    }}
+                                    onClick={() => router.push(`/flashcards?collection=${collection.name}`)}
                                 >
                                     {collection.name}
                                 </Button>
@@ -252,8 +302,8 @@ export default function Generate() {
                         label='Collection Name'
                         type="text"
                         fullWidth
-                        value={collectionName} // Changed to collectionName
-                        onChange={(e) => setCollectionName(e.target.value)} // Changed to setCollectionName
+                        value={collectionName}
+                        onChange={(e) => setCollectionName(e.target.value)}
                         variant="outlined"
                     />
                 </DialogContent>
