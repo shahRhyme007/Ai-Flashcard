@@ -1,8 +1,4 @@
 .env.local
 node_modules/
 .next/
-jsconfig.json
-package-lock.json
-next.config.mjs
-package.json
-firebase.js
+

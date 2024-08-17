@@ -1,0 +1,35 @@
+{
+  "name": "my-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^5.3.1",
+    "@emotion/react": "^11.13.0",
+    "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^5.16.7",
+    "@mui/material": "^5.16.7",
+    "@stripe/stripe-js": "^4.3.0",
+    "firebase": "^10.13.0",
+    "openai": "^4.56.0",
+    "pdfjs-dist": "^4.5.136",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-spinners": "^0.14.1",
+    "stripe": "^16.8.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.x.x",
+    "@babel/preset-env": "^7.x.x",
+    "@babel/preset-react": "^7.x.x",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "eslint": "^8",
+    "eslint-config-next": "14.2.5",
+    "next": "^14.2.5"
+  }
+}
