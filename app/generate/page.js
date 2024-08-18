@@ -7,9 +7,7 @@ import { saveFlashcardsCollection, getFlashcardsCollections } from "@/firebase/o
 import { Box, Button, Card, CardActionArea, CardContent, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Grid, Paper, TextField, Typography } from "@mui/material";
 import { doc, collection, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/firebase/firebase";
-import * as pdfjsLib from 'pdfjs-dist/webpack';
 import { PacmanLoader } from 'react-spinners';
-
 
 export default function Generate() {
     const { isLoaded, isSignedIn, user } = useUser();
@@ -22,7 +20,18 @@ export default function Generate() {
     const [file, setFile] = useState(null);
     const router = useRouter();
     const [loading, setLoading] = useState(false);
+    const [pdfjsLib, setPdfjsLib] = useState(null);
 
+    // Dynamic import for pdfjs-dist to ensure it only loads on the client side
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            import('pdfjs-dist/webpack').then((pdfjs) => {
+                setPdfjsLib(pdfjs);
+            }).catch(error => {
+                console.error("Failed to load pdfjs-dist:", error);
+            });
+        }
+    }, []);
 
     // Fetch user's flashcards from Firestore
     useEffect(() => {
@@ -62,25 +71,24 @@ export default function Generate() {
         }
     }, [user]);
 
-    
     const handleSubmit = async () => {
         if (!text.trim()) {
             alert('Please enter some text to generate flashcards.');
             return;
         }
-    
+
         setLoading(true); // Start loading
-    
+
         try {
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 body: text,
             });
-    
+
             if (!response.ok) {
                 throw new Error('Failed to generate flashcards');
             }
-    
+
             const data = await response.json();
             setFlashCards(data);
         } catch (error) {
@@ -90,7 +98,6 @@ export default function Generate() {
             setLoading(false); // Stop loading
         }
     };
-    
 
     const handleCardClick = (id) => {
         setFlipped((prev) => ({
@@ -135,6 +142,11 @@ export default function Generate() {
             const fileReader = new FileReader();
 
             fileReader.onload = async function () {
+                if (!pdfjsLib) {
+                    alert("PDF library is not loaded yet. Please try again.");
+                    return;
+                }
+
                 const typedArray = new Uint8Array(this.result);
                 const pdf = await pdfjsLib.getDocument(typedArray).promise;
 
@@ -185,7 +197,7 @@ export default function Generate() {
                         <Button variant="contained" color="primary" onClick={handleSubmit} fullWidth>
                             Submit
                         </Button>
-                        
+
                         {loading && (
                             <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}>
                                 <PacmanLoader color="#0699ff" />
